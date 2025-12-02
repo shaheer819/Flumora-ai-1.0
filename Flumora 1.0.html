@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flumora AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+<style>
+    body {
+        margin: 0;
+        font-family: "Inter", sans-serif;
+        background: #fff;
+        color: #222;
+        overflow: hidden;
+    }
+
+    /* LOGIN */
+    #loginPage {
+        display: flex;
+        height: 100vh;
+        justify-content: center;
+        align-items: center;
+        background: #f8f8f8;
+        padding: 20px;
+    }
+    #loginBox {
+        width: 90%;
+        max-width: 330px;
+        background: white;
+        padding: 25px;
+        border-radius: 20px;
+        box-shadow: 0 0 25px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    /* SIDEBAR */
+    #sidebar {
+        width: 260px;
+        background: #111;
+        color: white;
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100%;
+        padding: 20px;
+        transform: translateX(-100%);
+        transition: 0.3s ease;
+        overflow-y: auto;
+        z-index: 20;
+    }
+    #sidebar.open {
+        transform: translateX(0);
+    }
+
+    #closeSidebar {
+        color: #bbb;
+        cursor: pointer;
+        font-size: 20px;
+        margin-bottom: 15px;
+        display: inline-block;
+    }
+
+    #newChatBtn {
+        background: #222;
+        padding: 10px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin-bottom: 15px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .chatItem {
+        background:#1c1c1c;
+        padding:10px;
+        margin-bottom:6px;
+        border-radius:10px;
+        font-size:13px;
+        color:#eee;
+        cursor:pointer;
+    }
+
+    /* TOP BAR */
+    #topBar {
+        position: fixed;
+        width: 100%;
+        background: white;
+        padding: 14px;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 10;
+    }
+    #menuBtn {
+        font-size: 26px;
+        cursor: pointer;
+    }
+
+    /* CHAT AREA */
+    #chatArea {
+        padding: 15px;
+        margin-top: 65px;
+        height: calc(100vh - 135px);
+        overflow-y: auto;
+    }
+
+    .msg {
+        max-width: 85%;
+        padding: 12px;
+        border-radius: 14px;
+        margin-bottom: 12px;
+        font-size: 15px;
+        line-height: 1.4;
+        word-wrap: break-word;
+    }
+    .user { margin-left: auto; background: black; color: white; }
+    .ai { background: #f4f4f4; color: #222; }
+
+    /* THINKING DOTS */
+    .dots {
+        display: inline-flex; gap: 4px; margin-left: 5px;
+    }
+    .dots div {
+        width: 6px; height: 6px; background: #666;
+        border-radius: 50%; animation: bounce .5s infinite ease-in-out;
+    }
+    .dots div:nth-child(2) { animation-delay: .1s; }
+    .dots div:nth-child(3) { animation-delay: .2s; }
+
+    @keyframes bounce {
+        0%,100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    /* INPUT BAR */
+    #inputBar {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        padding: 12px;
+        background: white;
+        border-top: 1px solid #ddd;
+        display: flex;
+        gap: 10px;
+    }
+
+    #msgInput {
+        flex: 1;
+        padding: 12px;
+        background: #f5f5f5;
+        border: 1px solid #ccc;
+        border-radius: 14px;
+        font-size: 15px;
+    }
+
+    #sendBtn {
+        background: black;
+        color: white;
+        padding: 12px 18px;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage">
+    <div id="loginBox">
+        <img src="flumora.png" width="80" style="margin-bottom:15px;">
+        <h2>Welcome to Flumora</h2>
+        <button onclick="login()" style="padding:12px;width:100%;border:none;background:black;color:white;border-radius:14px;">
+            Continue
+        </button>
+    </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+        <span id="closeSidebar" onclick="toggleSidebar()">✕ Close</span>
+
+        <div id="newChatBtn" onclick="createNewChat()">➕ New Chat</div>
+
+        <h3>Saved Chats</h3>
+        <div id="savedChats"></div>
+    </div>
+
+    <div style="width:100%;">
+        <div id="topBar">
+            <span id="menuBtn" onclick="toggleSidebar()">☰</span>
+            <img src="flumora.png" width="45">
+            <h3 style="margin:0;">Flumora AI</h3>
+        </div>
+
+        <div id="chatArea"></div>
+
+        <div id="inputBar">
+            <input id="msgInput" placeholder="Send a message…">
+            <button id="sendBtn" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* LOGIN */
+function login() {
+    localStorage.setItem("flumora_login", "true");
+    location.reload();
+}
+if (localStorage.getItem("flumora_login") === "true") {
+    loginPage.style.display = "none";
+    app.style.display = "flex";
+}
+
+/* SIDEBAR */
+function toggleSidebar() {
+    sidebar.classList.toggle("open");
+}
+
+/* CHAT STORAGE */
+let chats = JSON.parse(localStorage.getItem("flumora_chats") || "[]");
+let currentChat = chats.length ? chats[chats.length-1] : { messages: [] };
+
+renderMessages();
+renderChatList();
+
+/* NEW CHAT */
+function createNewChat() {
+    currentChat = { messages: [] };
+    chats.push(currentChat);
+    saveChats();
+    renderChatList();
+    renderMessages();
+    toggleSidebar();
+}
+
+/* SEND MESSAGE */
+async function sendMessage() {
+    let txt = msgInput.value.trim();
+    if (!txt) return;
+
+    currentChat.messages.push({ role: "user", text: txt });
+    saveChats();
+    renderMessages();
+    msgInput.value = "";
+
+    let think = { role: "ai", thinking: true };
+    currentChat.messages.push(think);
+    renderMessages();
+
+    let res = await fetch("https://cuticular-nonevanescently-chauncey.ngrok-free.dev/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: txt })
+    });
+
+    let data = await res.json();
+
+    currentChat.messages.pop();
+    currentChat.messages.push({ role: "ai", text: data.reply });
+
+    saveChats();
+    renderMessages();
+}
+
+/* ENTER = SEND */
+msgInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+/* SAVE */
+function saveChats() {
+    if (!currentChat.title) {
+        let firstMsg = currentChat.messages.find(m => m.role === "user");
+        if (firstMsg) currentChat.title = firstMsg.text.slice(0, 30);
+    }
+
+    localStorage.setItem("flumora_chats", JSON.stringify(chats));
+}
+
+/* CHAT LIST */
+function renderChatList() {
+    savedChats.innerHTML = "";
+    chats.forEach((c, idx) => {
+        let div = document.createElement("div");
+        div.className = "chatItem";
+        div.textContent = c.title || "New Chat";
+        div.onclick = () => {
+            currentChat = chats[idx];
+            renderMessages();
+            toggleSidebar();
+        };
+        savedChats.appendChild(div);
+    });
+}
+
+/* RENDER MESSAGES */
+function renderMessages() {
+    chatArea.innerHTML = "";
+    currentChat.messages.forEach(m => {
+        let div = document.createElement("div");
+        div.className = "msg " + (m.role === "user" ? "user" : "ai");
+
+        if (m.thinking) {
+            div.innerHTML = `Thinking <div class="dots"><div></div><div></div><div></div></div>`;
+        } else {
+            div.textContent = m.text;
+        }
+
+        chatArea.appendChild(div);
+    });
+
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+</script>
+
+</body>
+</html>
